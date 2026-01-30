@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система подсчета фруктов на конвейере</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-section, .results-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            background: #eef2ff;
+            transform: translateY(-2px);
+        }
+        
+        .upload-area i {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .results-container {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .history-section, .statistics-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .report-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .fruit-tag {
+            display: inline-block;
+            background: #eef2ff;
+            color: #667eea;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-weight: 500;
+        }
+        
+        .fruit-count {
+            font-weight: bold;
+            margin-left: 5px;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-apple-alt"></i> Система подсчета фруктов</h1>
+            <p class="subtitle">Использование искусственных нейронных сетей для автоматического подсчета фруктов на конвейере</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title"><i class="fas fa-upload"></i> Загрузка изображения</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Перетащите изображение сюда</h3>
+                    <p>или нажмите для выбора файла</p>
+                    <p>Поддерживаемые форматы: JPG, PNG, GIF, BMP</p>
+                    <input type="file" id="fileInput" class="file-input" accept="image/*">
+                </div>
+                
+                <div class="alert" id="alertMessage"></div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Обработка изображения... Подождите</p>
+                    <p>Модель YOLOv8 обнаруживает фрукты...</p>
+                </div>
+                
+                <button class="btn" onclick="processImage()" id="processBtn">
+                    <i class="fas fa-play"></i> Запустить обработку
+                </button>
+                
+                <div class="report-buttons">
+                    <button class="btn btn-success" onclick="generateReport('pdf')">
+                        <i class="fas fa-file-pdf"></i> Создать PDF отчет
+                    </button>
+                    <button class="btn btn-success" onclick="generateReport('excel')">
+                        <i class="fas fa-file-excel"></i> Создать Excel отчет
+                    </button>
+                    <button class="btn btn-secondary" onclick="generateHistoryReport()">
+                        <i class="fas fa-history"></i> Отчет по истории
+                    </button>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <h2 class="section-title"><i class="fas fa-chart-bar"></i> Результаты</h2>
+                
+                <div id="resultsContainer">
+                    <p style="text-align: center; color: #666; padding: 40px;">
+                        Загрузите изображение и нажмите "Запустить обработку" для получения результатов
+                    </p>
+                </div>
+                
+                <div id="imagePreview"></div>
+            </div>
+        </div>
+        
+        <div class="statistics-section">
+            <h2 class="section-title"><i class="fas fa-chart-line"></i> Статистика</h2>
+            <div class="stat-grid" id="statisticsGrid">
+                <!-- Статистика будет загружена здесь -->
+            </div>
+        </div>
+        
+        <div class="history-section">
+            <h2 class="section-title"><i class="fas fa-history"></i> История запросов</h2>
+            <div class="table-responsive">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Дата и время</th>
+                            <th>Файл</th>
+                            <th>Всего фруктов</th>
+                            <th>Время обработки</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- История будет загружена здесь -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Элементы DOM
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const alertMessage = document.getElementById('alertMessage');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const historyBody = document.getElementById('historyBody');
+        const statisticsGrid = document.getElementById('statisticsGrid');
+        
+        let currentFile = null;
+        
+        // Обработчики событий для загрузки файла
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '#eef2ff';
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.background = '';
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '';
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        function handleFileSelect() {
+            if (fileInput.files.length > 0) {
+                currentFile = fileInput.files[0];
+                
+                // Показываем информацию о файле
+                uploadArea.innerHTML = `
+                    <i class="fas fa-file-image"></i>
+                    <h3>${currentFile.name}</h3>
+                    <p>Размер: ${(currentFile.size / 1024).toFixed(2)} KB</p>
+                    <p>Тип: ${currentFile.type}</p>
+                    <button class="btn" onclick="clearFile()">
+                        <i class="fas fa-times"></i> Выбрать другой файл
+                    </button>
+                `;
+                
+                showAlert('Файл успешно загружен! Теперь нажмите "Запустить обработку".', 'success');
+            }
+        }
+        
+        function clearFile() {
+            fileInput.value = '';
+            currentFile = null;
+            uploadArea.innerHTML = `
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Перетащите изображение сюда</h3>
+                <p>или нажмите для выбора файла</p>
+                <p>Поддерживаемые форматы: JPG, PNG, GIF, BMP</p>
+                <input type="file" id="fileInput" class="file-input" accept="image/*">
+            `;
+        }
+        
+        async function processImage() {
+            if (!currentFile) {
+                showAlert('Пожалуйста, сначала выберите изображение!', 'error');
+                return;
+            }
+            
+            // Показываем индикатор загрузки
+            loading.style.display = 'block';
+            processBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayResults(result);
+                    loadHistory();
+                    loadStatistics();
+                    showAlert('Обработка завершена успешно!', 'success');
+                } else {
+                    showAlert(`Ошибка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Ошибка соединения: ${error.message}`, 'error');
+            } finally {
+                loading.style.display = 'none';
+                processBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(result) {
+            // Отображаем статистику
+            let fruitsHtml = '';
+            if (result.by_fruit) {
+                for (const [fruit, count] of Object.entries(result.by_fruit)) {
+                    fruitsHtml += `
+                        <div class="fruit-tag">
+                            ${fruit}: <span class="fruit-count">${count}</span>
+                        </div>
+                    `;
+                }
+            }
+            
+            resultsContainer.innerHTML = `
+                <div class="result-item">
+                    <h3><i class="fas fa-chart-pie"></i> Результаты подсчета</h3>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Всего фруктов</div>
+                            <div class="stat-value">${result.total || 0}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Обнаружено объектов</div>
+                            <div class="stat-value">${result.detections || 0}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Время обработки</div>
+                            <div class="stat-value">${result.processing_time || 0} сек</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4>Распределение по фруктам:</h4>
+                        <div style="margin-top: 10px;">
+                            ${fruitsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Отображаем изображение с результатами
+            if (result.result_url) {
+                imagePreview.innerHTML = `
+                    <h4><i class="fas fa-image"></i> Результат обработки:</h4>
+                    <img src="${result.result_url}" alt="Результат детекции" class="image-preview">
+                    <p style="text-align: center; margin-top: 10px;">
+                        <a href="${result.result_url}" target="_blank" class="btn">
+                            <i class="fas fa-expand"></i> Открыть в полном размере
+                        </a>
+                    </p>
+                `;
+            }
+        }
+        
+        async function loadHistory() {
+            try {
+                const response = await fetch('/history');
+                const history = await response.json();
+                
+                if (response.ok) {
+                    let historyHtml = '';
+                    history.slice(0, 10).forEach(item => {
+                        const date = new Date(item.timestamp).toLocaleString('ru-RU');
+                        
+                        // Форматируем статистику по фруктам
+                        let fruitsSummary = '';
+                        if (item.fruit_counts && typeof item.fruit_counts === 'object') {
+                            const fruits = Object.entries(item.fruit_counts)
+                                .map(([fruit, count]) => `${fruit}: ${count}`)
+                                .join(', ');
+                            fruitsSummary = fruits;
+                        }
+                        
+                        historyHtml += `
+                            <tr>
+                                <td>${date}</td>
+                                <td>${item.filename}</td>
+                                <td>${item.total_fruits}</td>
+                                <td>${item.processing_time ? item.processing_time.toFixed(2) : '0'} сек</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    historyBody.innerHTML = historyHtml;
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки истории:', error);
+            }
+        }
+        
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/statistics');
+                const stats = await response.json();
+                
+                if (response.ok) {
+                    statisticsGrid.innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-label">Всего запросов</div>
+                            <div class="stat-value">${stats.total_requests || 0}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Всего фруктов</div>
+                            <div class="stat-value">${stats.total_fruits || 0}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Самый популярный</div>
+                            <div class="stat-value">${stats.most_common_fruit?.name || 'Нет'}</div>
+                            <div class="stat-label">${stats.most_common_fruit?.count || 0} шт</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Среднее на запрос</div>
+                            <div class="stat-value">${stats.average_fruits_per_request || 0}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+        
+        async function generateReport(type) {
+            try {
+                showAlert(`Генерация ${type.toUpperCase()} отчета...`, 'success');
+                
+                const response = await fetch('/generate_report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ type: type })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Создаем ссылку для скачивания
+                    const link = document.createElement('a');
+                    link.href = result.report_url;
+                    link.download = result.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showAlert(`${type.toUpperCase()} отчет успешно создан и загружен!`, 'success');
+                } else {
+                    showAlert(`Ошибка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Ошибка: ${error.message}`, 'error');
+            }
+        }
+        
+        async function generateHistoryReport() {
+            try {
+                showAlert('Генерация отчета по истории...', 'success');
+                
+                const response = await fetch('/generate_history_report');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Создаем ссылку для скачивания
+                    const link = document.createElement('a');
+                    link.href = result.report_url;
+                    link.download = result.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showAlert('Отчет по истории успешно создан и загружен!', 'success');
+                } else {
+                    showAlert(`Ошибка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Ошибка: ${error.message}`, 'error');
+            }
+        }
+        
+        function showAlert(message, type) {
+            alertMessage.textContent = message;
+            alertMessage.className = `alert alert-${type}`;
+            alertMessage.style.display = 'block';
+            
+            // Автоматически скрываем через 5 секунд
+            setTimeout(() => {
+                alertMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Загружаем историю и статистику при загрузке страницы
+        window.onload = function() {
+            loadHistory();
+            loadStatistics();
+        };
+    </script>
+</body>
+</html>
