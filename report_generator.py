@@ -127,3 +127,4 @@ class ReportGenerator:
         df.to_excel(filepath, index=False)
         
         return filepath
+
