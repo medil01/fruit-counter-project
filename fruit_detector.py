@@ -1,152 +1,143 @@
-import torch
-import cv2
-import numpy as np
-from PIL import Image
-from ultralytics import YOLO
 import os
 
+import cv2
+from ultralytics import YOLO
+
+
 class FruitDetector:
-    def __init__(self, model_path='yolov8n.pt'):
-        """
-        Инициализация детектора фруктов с предобученной моделью YOLOv8
-        """
-        # Используем YOLOv8 - современную и быструю модель для детекции объектов
-        # Модель автоматически скачается при первом запуске
+    """
+    Класс для детекции и подсчета фруктов с использованием YOLOv8.
+    Динамически определяет ID классов на основе загруженной модели.
+    """
+
+    def __init__(
+        self,
+        model_path: str = "yolov8n.pt",
+        target_fruits=None,
+        confidence_threshold: float = 0.25,
+        iou_threshold: float = 0.6,
+    ):
         self.model = YOLO(model_path)
-        
-        # Классы фруктов в COCO dataset (базовая модель знает основные фрукты)
+
+        if target_fruits is None:
+            target_fruits = {"apple", "banana", "orange"}
+
+        # Приведение model.names к единому формату dict
+        names = self.model.names
+        if isinstance(names, dict):
+            id_to_name = {int(k): str(v) for k, v in names.items()}
+        else:
+            id_to_name = {i: str(n) for i, n in enumerate(names)}
+
+        # Фильтрация ID целевых классов
         self.fruit_classes = {
-            47: 'apple',
-            48: 'orange',
-            49: 'banana',
-            50: 'broccoli',
-            51: 'carrot',
-            52: 'hot dog',  # не фрукт, но может быть в списке
-            53: 'pizza',
-            54: 'donut',
-            55: 'cake'
+            class_id: name for class_id, name in id_to_name.items() if name in target_fruits
         }
-        
-        # Настройки детекции
-        self.confidence_threshold = 0.25
-        self.iou_threshold = 0.45
-        
-    def detect_fruits(self, image_path):
-        """
-        Обнаружение фруктов на изображении
-        """
+        self.fruit_class_ids = sorted(self.fruit_classes.keys())
+
+        if not self.fruit_class_ids:
+            raise ValueError(
+                "Не найдены классы фруктов в модели. "
+                "Проверьте веса (model_path) и target_fruits."
+            )
+
+        self.confidence_threshold = float(confidence_threshold)
+        self.iou_threshold = float(iou_threshold)
+
+    def detect_fruits(self, image_path: str):
+        """Обнаружение и подсчет фруктов на изображении."""
         try:
-            # Загрузка изображения
-            image = Image.open(image_path)
-            img_array = np.array(image)
-            
-            # Детекция объектов с помощью YOLOv8
-            results = self.model(
-                source=img_array,
+            results = self.model.predict(
+                source=image_path,
                 conf=self.confidence_threshold,
                 iou=self.iou_threshold,
-                classes=list(self.fruit_classes.keys())  # Только фрукты
+                classes=self.fruit_class_ids,
+                verbose=False,
             )
-            
-            # Обработка результатов
+
+            if not results:
+                return None
+
+            result = results[0]
+
             detections = []
             total_fruits = 0
             fruit_counts = {}
-            
-            # Создаем копию изображения для аннотаций
-            annotated_img = img_array.copy()
-            
-            for result in results:
-                boxes = result.boxes
-                if boxes is not None:
-                    for box in boxes:
-                        # Координаты ограничивающего прямоугольника
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        confidence = box.conf[0].cpu().numpy()
-                        class_id = int(box.cls[0].cpu().numpy())
-                        
-                        # Проверяем, что это фрукт из нашего списка
-                        if class_id in self.fruit_classes:
-                            fruit_name = self.fruit_classes[class_id]
-                            
-                            # Добавляем детекцию в список
-                            detection = {
-                                'fruit': fruit_name,
-                                'confidence': float(confidence),
-                                'bbox': [float(x1), float(y1), float(x2), float(y2)],
-                                'area': float((x2 - x1) * (y2 - y1))
-                            }
-                            detections.append(detection)
-                            
-                            # Обновляем счетчики
-                            total_fruits += 1
-                            fruit_counts[fruit_name] = fruit_counts.get(fruit_name, 0) + 1
-                            
-                            # Рисуем bounding box на изображении
-                            cv2.rectangle(annotated_img, 
-                                        (int(x1), int(y1)), 
-                                        (int(x2), int(y2)), 
-                                        (0, 255, 0), 2)
-                            
-                            # Добавляем текст с названием фрукта и уверенностью
-                            label = f"{fruit_name}: {confidence:.2f}"
-                            cv2.putText(annotated_img, label, 
-                                      (int(x1), int(y1) - 10),
-                                      cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
-                                      (0, 255, 0), 2)
-            
-            # Сохраняем аннотированное изображение
-            result_path = os.path.join('static', 'results', 
-                                     f'result_{os.path.basename(image_path)}')
-            cv2.imwrite(result_path, cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
-            
-            # Подготавливаем статистику
-            statistics = {
-                'total_fruits': total_fruits,
-                'fruit_counts': fruit_counts,
-                'detections': detections,
-                'result_image': result_path,
-                'original_image': image_path
+
+            annotated_img = result.plot()
+
+            boxes = result.boxes
+            if boxes is not None:
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    confidence = float(box.conf[0].item())
+                    class_id = int(box.cls[0].item())
+
+                    fruit_name = self.fruit_classes.get(class_id)
+                    if fruit_name is None:
+                        continue
+
+                    detections.append(
+                        {
+                            "fruit": fruit_name,
+                            "confidence": confidence,
+                            "bbox": [float(x1), float(y1), float(x2), float(y2)],
+                            "area": float((x2 - x1) * (y2 - y1)),
+                        }
+                    )
+
+                    total_fruits += 1
+                    fruit_counts[fruit_name] = fruit_counts.get(fruit_name, 0) + 1
+
+            os.makedirs(os.path.join("static", "results"), exist_ok=True)
+            result_path = os.path.join(
+                "static",
+                "results",
+                f"result_{os.path.basename(image_path)}",
+            )
+            cv2.imwrite(result_path, annotated_img)
+
+            return {
+                "total_fruits": total_fruits,
+                "fruit_counts": fruit_counts,
+                "detections": detections,
+                "result_image": result_path,
+                "original_image": image_path,
             }
-            
-            return statistics
-            
+
         except Exception as e:
             print(f"Ошибка при детекции: {str(e)}")
             return None
-    
-    def count_from_video(self, video_path, frame_interval=10):
+
+    def count_from_video(self, video_path: str, frame_interval: int = 10):
         """
-        Подсчет фруктов из видео (для конвейера)
+        Покадровый подсчет фруктов из видео.
+        Используется выборка кадров с заданным интервалом.
         """
         cap = cv2.VideoCapture(video_path)
         frame_count = 0
         total_counts = {}
-        
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-                
+
             if frame_count % frame_interval == 0:
-                # Конвертируем кадр для обработки
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                
-                # Временное сохранение кадра
-                temp_path = f'temp_frame_{frame_count}.jpg'
+                temp_path = f"temp_frame_{frame_count}.jpg"
                 cv2.imwrite(temp_path, frame)
-                
-                # Детекция на кадре
+
                 stats = self.detect_fruits(temp_path)
-                
                 if stats:
-                    for fruit, count in stats['fruit_counts'].items():
+                    for fruit, count in stats["fruit_counts"].items():
                         total_counts[fruit] = total_counts.get(fruit, 0) + count
-                
-                # Удаляем временный файл
-                os.remove(temp_path)
-            
+
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+
             frame_count += 1
-            
+
         cap.release()
         return total_counts
