@@ -16,20 +16,20 @@ def save_uploaded_file(file, upload_folder):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = secure_filename(f"{timestamp}_{file.filename}")
         filepath = os.path.join(upload_folder, filename)
-        
+
         # Сохраняем файл
         file.save(filepath)
         return filepath
-    
+
     return None
 
 def cleanup_old_files(folder, max_age_hours=24):
     """Очистка старых файлов"""
     if not os.path.exists(folder):
         return
-    
+
     current_time = datetime.now().timestamp()
-    
+
     for filename in os.listdir(folder):
         filepath = os.path.join(folder, filename)
         if os.path.isfile(filepath):
@@ -44,12 +44,12 @@ def format_statistics(statistics):
     """Форматирование статистики для отображения"""
     if not statistics:
         return None
-    
+
     formatted = {
         'total': statistics['total_fruits'],
         'by_fruit': statistics['fruit_counts'],
         'detections': len(statistics.get('detections', [])),
         'result_image': statistics.get('result_image', '')
     }
-    
+
     return formatted
